@@ -70,6 +70,7 @@
 export default {
     data() {
         return {
+            sourceConfig: null,
             sourceShapeName: "",
             shapeConfigurations: 0,
             sourceX: 0,
@@ -100,8 +101,10 @@ export default {
             shape.y = e.target.y()
         },
         handleStageMouseDown(e) {
-            if(e.target.attrs.name == "line" && this.shapeVariable == 3){
+            if(e.target.attrs.name == "line" && this.shapeVariable == 3 && this.sourceX != 0){
                 this.handleOtherShapes(0)
+            }else if(e.target.attrs.name == "line" && this.shapeVariable == 3){
+                this.handleOtherShapes(-1)
             }
         },
         handleOtherShapes(shapeVariable) {
@@ -116,6 +119,7 @@ export default {
               this.sourceX = 0
               this.sourceY = 0
               this.sourceShapeName = ""
+              this.sourceConfig = null
             }
             this.shapeVariable = shapeVariable
         },
@@ -188,7 +192,6 @@ export default {
                 name: 'line',
                 id: String(this.id)
             });
-            console.log(line.points)
             this.id = String((Number(this.id) + 1));
             this.lines.pop()
             this.lines.push(line)
@@ -209,6 +212,7 @@ export default {
           if(this.shapeVariable == 3){
             if(this.start == false){
               this.start = true
+              this.sourceConfig = this.shapeConfigurations
               this.sourceShapeName = this.shapeConfigurations.name
               if(this.shapeConfigurations.name == "circle"){
                 this.sourceX = this.shapeConfigurations.x
@@ -241,6 +245,7 @@ export default {
                     if(this.shapeConfigurations.x == this.sourceX || this.sourceShapeName == "circle"){
                         this.handleOtherShapes(0)
                     }else{
+                        
                         var yBig = this.sourceY - this.shapeConfigurations.y
                         var xBig = this.sourceX - this.shapeConfigurations.x
                         var length = Math.sqrt(Math.pow(xBig, 2) + Math.pow(yBig, 2));
@@ -255,11 +260,12 @@ export default {
                             strokeWidth: 10,
                             lineCap: 'round',
                             lineJoin: 'round',
-                            draggable: true,
+                            draggable: false,
                             name: 'line',
                             id: String(this.id)
                         });
-                        console.log(line.points)
+                        this.shapeConfigurations.draggable = false
+                        this.sourceConfig.draggable = false
                         this.id = String((Number(this.id) + 1));
                         this.lines.pop()
                         this.lines.push(line)
@@ -284,11 +290,12 @@ export default {
                             strokeWidth: 10,
                             lineCap: 'round',
                             lineJoin: 'round',
-                            draggable: true,
+                            draggable: false,
                             name: 'line',
                             id: String(this.id)
                         });
-                        // console.log(line.points)
+                        this.shapeConfigurations.draggable = false
+                        this.sourceConfig.draggable = false
                         this.id = String((Number(this.id) + 1));
                         this.lines.pop()
                         this.lines.push(line)
