@@ -37,4 +37,14 @@ public class Graph {
     public void setLinks(List<Link> links) {
         this.links = links;
     }
+
+    public GraphMemento createMemento() {
+        return new GraphMemento(elements, links);
+    }
+
+    public void restoreMemento(GraphMemento memento) {
+        elements = new HashMap<>(memento.getElements());
+        links = List.copyOf(memento.getLinks());
+    }
+    
 }
