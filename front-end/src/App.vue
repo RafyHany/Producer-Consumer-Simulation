@@ -1,26 +1,30 @@
 <template>
     <body @mousemove="fitStageIntoParentContainer">
-        <div class="control-header">.
+        <div class="control-header">
             <img class="imagesleft" src="./assets/imagenew.png" alt="">
-            <img class="imagesright" src="./assets/imagenew.png" alt="">
+            
             <header id="header">
                 <p class="products">Number of Products: {{ numberOfProducts }}</p>
                 <button class="productsbutton" @click="decrement">-</button>
                 <button class="productsbutton" @click="increment">+</button>
             </header>
+            <img class="imagesright" src="./assets/imagenew.png" alt="">
         </div>
 
         <div class="main-container">
             <section>
-                <div id="container" @click="createElement">
-                    <v-stage ref="stage" :config="stageConfig">
+                <div id="container" @click="createElement" @mousemove="handleLineMove($event)">
+                    <v-stage ref="stage" :config="stageConfig" @mousedown="handleStageMouseDown" @touchstart="handleStageMouseDown">
                         <v-layer ref="myLayer">
-                            <v-circle v-for="shapeConfig in circles" :key="shapeConfig" class="shapeconfig"
-                                :config="shapeConfig"></v-circle>
-                            <v-rect v-for="shapeConfig in rectangles" :key="shapeConfig" class="shapeconfig"
-                                :config="shapeConfig"></v-rect>
                             <v-arrow v-for="shapeConfig in lines" :key="shapeConfig" class="shapeconfig"
                                 :config="shapeConfig"></v-arrow>
+                            <v-circle v-for="shapeConfig in circles" :key="shapeConfig" class="shapeconfig"
+                                :config="shapeConfig" @click="handleShapeClick(shapeConfig, $event)" @dragend="handleDragEnd"
+                                @mouseenter="enterChangeColorCircle(shapeConfig)" @mouseleave="leaveChangeColorCircle(shapeConfig)"></v-circle>
+                            <v-rect v-for="shapeConfig in rectangles" :key="shapeConfig" class="shapeconfig"
+                                :config="shapeConfig" @click="handleShapeClick(shapeConfig, $event)" @dragend="handleDragEnd"
+                                @mouseenter="enterChangeColorRectangle(shapeConfig)" @mouseleave="leaveChangeColorRectangle(shapeConfig)"></v-rect>
+
                         </v-layer>
                     </v-stage>
                 </div>
@@ -29,16 +33,16 @@
                 <p class="title" id="shape">Process</p>
                 <ul class="buttonshape">
                     <li>
-                        <img class="images" src="./assets/machine.png" alt="">
-                        <button class="shapes" id="circle" @click="shapeVariable = 2">Machine</button>
+                        <img class="images" src="./assets/machine.png" alt="" @click="shapeVariable = 2">
+                        <button class="shapes" id="circle" @click="handleOtherShapes(2)">Machine</button>
                     </li>
                     <li>
-                        <img class="images" src="./assets/consumers.png" alt="">
-                        <button class="shapes" id="rectangle" @click="shapeVariable = 1">Queue</button>
+                        <img class="images" src="./assets/consumers.png" alt="" @click="shapeVariable = 1">
+                        <button class="shapes" id="rectangle" @click="handleOtherShapes(1)">Queue</button>
                     </li>
                     <li>
-                        <img class="images" src="./assets/line.png" alt="" style="margin-right: 15px;">
-                        <button class="shapes" id="line" @click="shapeVariable = 3">Link</button>
+                        <img class="images" src="./assets/line.png" alt="" style="margin-right: 18px;" @click="handleLine()">
+                        <button class="shapes" id="line" @click="handleLine()">Link</button>
                     </li>
                 </ul>
                 <p class="title" id="option">Options</p>
@@ -66,15 +70,18 @@
 export default {
     data() {
         return {
+            sourceShapeName: "",
+            shapeConfigurations: 0,
+            sourceX: 0,
+            sourceY: 0,
             numberOfProducts: 0,
             mouseDown: 0,
+            start: false,
             id: 0,
             rectangles: [],
             circles: [],
             lines: [],
             allshapes: [],
-            layerConfig: {},
-            selectedShapeId: -1,
 
             stageConfig: {
                 width: 1000,
@@ -87,6 +94,43 @@ export default {
         window.addEventListener("resize", this.fitStageIntoParentContainer)
     },
     methods: {
+        handleDragEnd(e){
+            var shape = this.allshapes.find((r) => r.id === e.target.id())
+            shape.x = e.target.x()
+            shape.y = e.target.y()
+        },
+        handleStageMouseDown(e) {
+            if(e.target.attrs.name == "line" && this.shapeVariable == 3){
+                this.handleOtherShapes(0)
+            }
+        },
+        handleOtherShapes(shapeVariable) {
+            if(shapeVariable == 0){
+                this.lines.pop()
+            }
+            if(this.shapeVariable == 3){
+              document.getElementById('line').style.background = "#e9eef0"
+              document.getElementById('line').style.color= "#000000"
+              this.start = false
+              this.shapeConfigurations = 0
+              this.sourceX = 0
+              this.sourceY = 0
+              this.sourceShapeName = ""
+            }
+            this.shapeVariable = shapeVariable
+        },
+        enterChangeColorCircle(shapeConfig) {
+            shapeConfig.fill = "#0a7b0a"
+        },
+        leaveChangeColorCircle(shapeConfig) {
+            shapeConfig.fill = "#05bc05"
+        },
+        enterChangeColorRectangle(shapeConfig) {
+            shapeConfig.fill = "#d3d306"
+        },
+        leaveChangeColorRectangle(shapeConfig) {
+            shapeConfig.fill = "#ffff00"
+        },
         increment() {
             this.numberOfProducts++;
         },
@@ -105,14 +149,12 @@ export default {
             this.stageConfig.height = containerHeight
         },
         clear() {
+            this.handleOtherShapes(0)
             this.allshapes = []
             this.rectangles = []
             this.circles = []
-            this.ellipses = []
-            this.triangles = []
-            this.pentagons = []
-            this.hexagons = []
             this.lines = []
+            this.id = 0
             fetch("http://localhost:8081/paint/clearAll", {
                 method: "POST",
                 headers: {
@@ -127,11 +169,170 @@ export default {
                 this.isError = true;
             });
         },
+        handleLineMove(event){
+          var item1ForWidth = 0
+          var item2ForWidth = parseFloat(window.getComputedStyle(document.getElementById('container')).marginLeft)
+          var item1ForHeight = document.querySelector('.control-header').offsetHeight
+          var item2ForHeight = parseFloat(window.getComputedStyle(document.getElementById('container')).marginTop)
+          var offsetHeightCanvas = item1ForHeight + item2ForHeight
+          var offsetWidthCanvas = item1ForWidth + item2ForWidth
+
+          if(this.shapeVariable == 3 && this.start == true){
+            var line = ({
+                points: [this.sourceX, this.sourceY, event.clientX - offsetWidthCanvas, event.clientY - offsetHeightCanvas],
+                stroke: "black",
+                strokeWidth: 10,
+                lineCap: 'round',
+                lineJoin: 'round',
+                draggable: true,
+                name: 'line',
+                id: String(this.id)
+            });
+            console.log(line.points)
+            this.id = String((Number(this.id) + 1));
+            this.lines.pop()
+            this.lines.push(line)
+          }
+        },
+        handleShapeClick(shapeConfig, event){
+          var item1ForWidth = 0
+          var item2ForWidth = parseFloat(window.getComputedStyle(document.getElementById('container')).marginLeft)
+          var item1ForHeight = document.querySelector('.control-header').offsetHeight
+          var item2ForHeight = parseFloat(window.getComputedStyle(document.getElementById('container')).marginTop)
+          var offsetHeightCanvas = item1ForHeight + item2ForHeight
+          var offsetWidthCanvas = item1ForWidth + item2ForWidth
+
+          
+          this.shapeConfigurations = shapeConfig
+          var pts = []
+
+          if(this.shapeVariable == 3){
+            if(this.start == false){
+              this.start = true
+              this.sourceShapeName = this.shapeConfigurations.name
+              if(this.shapeConfigurations.name == "circle"){
+                this.sourceX = this.shapeConfigurations.x
+                this.sourceY = this.shapeConfigurations.y
+              }else if (this.shapeConfigurations.name == "rectangle"){
+                this.sourceX = this.shapeConfigurations.x + 100
+                this.sourceY = this.shapeConfigurations.y + 50
+              }
+              
+              pts.push(this.sourceX)
+              pts.push(this.sourceY)
+
+              pts.push(event.clientX - offsetWidthCanvas)
+              pts.push(event.clientY - offsetWidthCanvas)
+              var line = ({
+                  points: pts,
+                  stroke: "black",
+                  strokeWidth: 10,
+                  lineCap: 'round',
+                  lineJoin: 'round',
+                  draggable: true,
+                  name: 'line',
+                  id: String(this.id)
+              });
+              this.id = String((Number(this.id) + 1));
+              this.lines.push(line)
+
+            }else {
+                if(this.shapeConfigurations.name == "circle"){
+                    if(this.shapeConfigurations.x == this.sourceX || this.sourceShapeName == "circle"){
+                        this.handleOtherShapes(0)
+                    }else{
+                        var yBig = this.sourceY - this.shapeConfigurations.y
+                        var xBig = this.sourceX - this.shapeConfigurations.x
+                        var length = Math.sqrt(Math.pow(xBig, 2) + Math.pow(yBig, 2));
+                        var xNormal = xBig / length
+                        var yNormal = yBig / length
+                        var xResult = xNormal * this.shapeConfigurations.radius * 1.1
+                        var yResult = yNormal * this.shapeConfigurations.radius * 1.1
+
+                        var line = ({
+                            points: [this.sourceX, this.sourceY, this.shapeConfigurations.x + xResult, this.shapeConfigurations.y + yResult],
+                            stroke: "black",
+                            strokeWidth: 10,
+                            lineCap: 'round',
+                            lineJoin: 'round',
+                            draggable: true,
+                            name: 'line',
+                            id: String(this.id)
+                        });
+                        console.log(line.points)
+                        this.id = String((Number(this.id) + 1));
+                        this.lines.pop()
+                        this.lines.push(line)
+                        this.allshapes.push(line)
+                        this.handleOtherShapes(-1)
+
+                    }
+                    
+                }else if (this.shapeConfigurations.name == "rectangle"){
+                    if(this.shapeConfigurations.x == this.sourceX - 100 || this.sourceShapeName == "rectangle"){
+                        this.handleOtherShapes(0)
+                    }
+                    else{
+                        var point = this.rectangleIntersect(100, 50,
+                            this.sourceX - (this.shapeConfigurations.x + 100) , this.sourceY - (this.shapeConfigurations.y + 50));
+
+                        var line = ({
+                            points: [this.sourceX, this.sourceY,
+                                    (point && { x: point.x + this.shapeConfigurations.x + 100, y: point.y + this.shapeConfigurations.y + 50 }).x ,
+                                    (point && { x: point.x + this.shapeConfigurations.x + 100, y: point.y + this.shapeConfigurations.y + 50 }).y ],
+                            stroke: "black",
+                            strokeWidth: 10,
+                            lineCap: 'round',
+                            lineJoin: 'round',
+                            draggable: true,
+                            name: 'line',
+                            id: String(this.id)
+                        });
+                        // console.log(line.points)
+                        this.id = String((Number(this.id) + 1));
+                        this.lines.pop()
+                        this.lines.push(line)
+                        this.allshapes.push(line)
+                        this.handleOtherShapes(-1)
+                    }
+                }else {
+                    this.handleOtherShapes(0)
+                }
+            }
+          }
+        },
+        rectangleIntersect(w, h, x, y) {
+            var sx = x > 0 ? 1 : -1;
+            var sy = y > 0 ? 1 : -1;
+
+            x *= sx;
+            y *= sy;
+
+            if (x < w && y < h) return null;
+
+            var m = x * h;
+            var n = y * w;
+
+            if (m < n) w = m / y;
+            if (m > n) h = n / x;
+
+            return { x: sx * w * 1.1 , y: sy * h * 1.1};
+        },
+        handleLine(){
+            //for adjusting position of shapes
+            if(this.shapeVariable != 3){
+              document.getElementById('line').style.background = "#000000"
+              document.getElementById('line').style.color= "#e9eef0"
+              this.shapeVariable = 3
+            }else {
+              this.handleOtherShapes(0)
+            }
+        },
         createElement(event) {
 
             //for adjusting position of shapes
-            var item1ForWidth = document.querySelector('.sidenavshape').offsetWidth
-            var item2ForWidth = parseFloat(window.getComputedStyle(document.getElementById('container')).marginLeft) * 2 + 5
+            var item1ForWidth = 0
+            var item2ForWidth = parseFloat(window.getComputedStyle(document.getElementById('container')).marginLeft)
             var item1ForHeight = document.querySelector('.control-header').offsetHeight
             var item2ForHeight = parseFloat(window.getComputedStyle(document.getElementById('container')).marginTop)
             var offsetHeightCanvas = item1ForHeight + item2ForHeight
@@ -175,7 +376,7 @@ export default {
                         x: event.clientX - offsetWidthCanvas,
                         y: event.clientY - offsetHeightCanvas,
                         radius: 60,
-                        fill: 'green',
+                        fill: '#05bc05',
                         stroke: 'black',
                         draggable: true,
                         strokeWidth: 3,
@@ -201,39 +402,10 @@ export default {
                         this.isError = true;
                     });
                     break;
-                case 3:
-                    var line = ({
-                        points: [event.clientX - 100 - offsetWidthCanvas, event.clientY - 100 - offsetHeightCanvas,
-                        event.clientX + 100 - offsetWidthCanvas, event.clientY + 100 - offsetHeightCanvas],
-                        stroke: "black",
-                        strokeWidth: 10,
-                        lineCap: 'round',
-                        lineJoin: 'round',
-                        draggable: true,
-                        name: 'line',
-                        id: String(this.id)
-                    });
-                    this.id = String((Number(this.id) + 1));
-                    this.lines.push(line)
-                    this.allshapes.push(line)
-
-                    fetch("http://localhost:8081/paint/create", {
-                        method: "POST",
-                        headers: {
-                            'Content-type': 'application/json',
-                        },
-                        body: JSON.stringify(line)
-                    }).then(responce => {
-                        return responce.text();
-                    }).then(data => {
-                        console.log(data);
-                    }).catch(error => {
-                        console.error("Error:", error);
-                        this.isError = true;
-                    });
-                    break;
             }
-            this.shapeVariable = 0
+            if(this.shapeVariable != 3){
+              this.shapeVariable = 0
+            }
         },
     }
 }
@@ -261,7 +433,7 @@ body {
 .main-container {
     display: flex;
     width: 100%;
-    justify-content: space-between;
+    justify-content: space-evenly;
 }
 
 section {
@@ -273,6 +445,7 @@ section {
     height: 100%;
     background-color: #fefefe;
     margin: calc(15px * 0.6);
+    margin-left: 2%;
     border-radius: calc(50px * 0.6);
 }
 
@@ -321,7 +494,7 @@ section {
     padding: calc(5px * 0.6) 0;
     margin: calc(8px * 0.6);
     border-radius: calc(15px * 0.6);
-    color: rgb(2, 0, 2);
+    color: rgb(0, 0, 0);
     font-size: calc(30px * 0.6);
     font-weight: 500;
     cursor: pointer;
@@ -332,7 +505,7 @@ section {
 .shapes:hover,
 .options:hover {
     background-color: rgb(0, 0, 0);
-    color: rgb(243, 290, 255);
+    color: #e9eef0;
 }
 
 .sidenavshape {
@@ -377,7 +550,8 @@ li {
 }
 
 .control-header {
-    diplay: flex;
+    display: flex;
+    align-items: center;
 }
 
 header {
@@ -390,7 +564,6 @@ header {
     border-radius: calc(50px * 0.6);
     background: linear-gradient(to top, #394b9a 0%, #a7c9e0);
     margin: auto;
-    margin-top: calc(20px * 0.6);
     border-color: black;
 
 }
@@ -410,7 +583,7 @@ header {
 
 .productsbutton:hover {
     background-color: rgb(0, 0, 0);
-    color: rgb(243, 290, 255);
+    color: rgb(243, 255, 255);
 }
 
 .imagesleft {
@@ -434,4 +607,8 @@ header {
 .draw {
     display: flex;
     flex-direction: column;
-}</style>
+}
+
+
+
+</style>
