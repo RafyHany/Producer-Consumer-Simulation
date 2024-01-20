@@ -1,8 +1,7 @@
 package producer.producerConsumer.services.simulation;
-
 import producer.producerConsumer.services.models.*;
-
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 public class ServiceSimulation {
     private static ServiceSimulation sim = null ;
@@ -55,4 +54,24 @@ public class ServiceSimulation {
     public void setGraph(Graph graph) {
         this.graph = graph;
     }
+
+    public void runSimulation() throws InterruptedException {
+        int OriginalInputProducts = productInStock;
+        Graph graph = new Graph();
+        while (true) {
+           TimeUnit.SECONDS.sleep(getRandomTime());
+            if(productInStock > 0){
+                ((Queues) graph.getElements().get("0")).addToProducts(new Product());
+                productInStock--;
+            }
+        }
+    }
+
+    public int getRandomTime(){
+        int minimum = 1;
+        int maximum = 5;
+        int randomtime = (int)Math.floor(Math.random() *(maximum - minimum + 1) + minimum);
+        return randomtime;
+    }
+
 }
