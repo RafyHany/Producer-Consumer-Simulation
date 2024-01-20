@@ -7,6 +7,19 @@ public class ServiceSimulation {
     private static ServiceSimulation sim = null ;
     private Graph graph = new Graph() ;
     private int productInStock ;
+    
+    private Caretaker caretaker = new Caretaker(); 
+
+    public void saveState() {
+        // Save the current state of the graph to the caretaker
+        caretaker.setMemento(graph.createMemento());
+    }
+
+    public void restoreState() {
+        // Restore the state from the caretaker
+        graph.restoreMemento(caretaker.getMemento());
+    }
+
     private ServiceSimulation(){}
 
     public static synchronized ServiceSimulation getInstance(){
@@ -63,8 +76,8 @@ public class ServiceSimulation {
             if(productInStock > 0){
                 ((Queues) this.graph.getElements().get("0")).addToProducts(new Product());
                 System.out.println(productInStock);
+                sim.saveState();
                 productInStock--;
-
             }
         }
     }
