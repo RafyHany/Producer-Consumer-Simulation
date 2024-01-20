@@ -12,12 +12,15 @@ import java.util.List;
 @Service
 public class ServiceFacade {
     private ServiceSimulation sim = ServiceSimulation.getInstance();
+    
     public ServiceFacade(){}
-    public void startSimulation(List<ElementDto> dtos){
+    
+    public void startSimulation(List<ElementDto> dtos) throws InterruptedException{
         sim.buildGraph(dtos);
         sim.makeLinksBetweenElements();
-        // complete amen
+        sim.runSimulation(); /*? go to simulate ? */
     }
+    
     public void addProduct(){
         sim.addProduct();
     }
