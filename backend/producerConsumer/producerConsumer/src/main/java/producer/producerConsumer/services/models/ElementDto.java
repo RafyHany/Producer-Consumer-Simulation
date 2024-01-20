@@ -9,6 +9,7 @@ public class ElementDto {
     public String color;
     public String id;
     public String text;
+    public String productInQueue ;
     public String to ;   // id of element
     public String from ; // id of element
     public ArrayList<Double> points ; // or the link

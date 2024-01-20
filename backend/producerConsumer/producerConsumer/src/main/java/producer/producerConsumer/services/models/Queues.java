@@ -10,6 +10,7 @@ public class Queues extends Element implements Runnable{
     private Map<String, Machine> freeMachines = new HashMap<>();
 
     private List<Product> products = new ArrayList<>();
+    private String productInQueue ;
     private List<String> ids = new ArrayList<>();
     private Thread thread;
 
@@ -29,6 +30,14 @@ public class Queues extends Element implements Runnable{
     @Override
     public void setProducts(List<Product> products) {
         this.products = products;
+    }
+
+    public String getProductInQueue() {
+        return productInQueue;
+    }
+
+    public void setProductInQueue(String productInQueue) {
+        this.productInQueue = productInQueue;
     }
 
     public List<String> getIds() {

@@ -26,6 +26,14 @@ public class Link extends Element {
         return from;
     }
 
+    public ArrayList<Double> getPoints() {
+        return points;
+    }
+
+    public void setPoints(ArrayList<Double> points) {
+        this.points = points;
+    }
+
     public void setFrom(String from) {
         this.from = from;
     }

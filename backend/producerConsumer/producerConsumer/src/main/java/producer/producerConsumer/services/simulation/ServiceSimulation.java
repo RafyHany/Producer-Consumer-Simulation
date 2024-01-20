@@ -61,8 +61,10 @@ public class ServiceSimulation {
         while (true) {
            TimeUnit.SECONDS.sleep(getRandomTime());
             if(productInStock > 0){
-                ((Queues) graph.getElements().get("0")).addToProducts(new Product());
+                ((Queues) this.graph.getElements().get("0")).addToProducts(new Product());
+                System.out.println(productInStock);
                 productInStock--;
+
             }
         }
     }
