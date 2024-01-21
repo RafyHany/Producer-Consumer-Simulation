@@ -33,15 +33,15 @@
                 <p class="title" id="shape">Process</p>
                 <ul class="buttonshape">
                     <li>
-                        <img class="images" src="./assets/machine.png" alt="" @click="shapeVariable = 2">
+                        <img class="images" src="./assets/machine.png" alt="">
                         <button class="shapes" id="circle" @click="handleOtherShapes(2)">Machine</button>
                     </li>
                     <li>
-                        <img class="images" src="./assets/consumers.png" alt="" @click="shapeVariable = 1">
+                        <img class="images" src="./assets/consumers.png" alt="">
                         <button class="shapes" id="rectangle" @click="handleOtherShapes(1)">Queue</button>
                     </li>
                     <li>
-                        <img class="images" src="./assets/line.png" alt="" style="margin-right: 18px;" @click="handleLine()">
+                        <img class="images" src="./assets/line.png" alt="" style="margin-right: 18px;">
                         <button class="shapes" id="line" @click="handleLine()">Link</button>
                     </li>
                 </ul>
@@ -56,8 +56,12 @@
                         <button class="options" id="resimulate" @click="replay">Resimulate</button>
                     </li>
                     <li>
+                        <img class="images" src="./assets/replay.png" alt="">
+                        <button class="options" id="endSimulation" @click="end">End simulation</button>
+                    </li>
+                    <li>
                         <img class="images" src="./assets/clear.png" alt="" style="margin-right: 11px;">
-                        <button class="options" id="clear" @click="clear" style="width:120px">Clear</button>
+                        <button class="options" id="clear" @click="clear" style="width:140px">Clear</button>
                     </li>
                 </ul>
             </div>
@@ -70,6 +74,19 @@
 export default {
     data() {
         return {
+            isUpdating: false,
+            products: 0,
+            defaultCircleRadius: 60,
+            defaultRectangleWidth: 200,
+            defaultRectangleHeight: 100,
+            defaultStroke: "black",
+            defaultStrokeWidthShape: 3,
+            defaultStrokeWidthLine: 10,
+            defaultLineCap: 'round',
+            defaultLineJoin: 'round',
+            defaultCirclefill: "#05bc05",
+            defaultRectangleFill: "#ffff00",
+            interval: null,
             sourceConfig: null,
             sourceShapeName: "",
             shapeConfigurations: 0,
@@ -95,6 +112,131 @@ export default {
         window.addEventListener("resize", this.fitStageIntoParentContainer)
     },
     methods: {
+        async end (){
+            this.isUpdating = false
+            document.getElementsByClassName("shapes").disabled = false
+            document.getElementById("simulate").disabled = false
+            document.getElementById("resimulate").disabled = false
+            document.getElementById("clear").disabled = false
+
+            this.numberOfProducts = 0
+            const responcee = await fetch("http://localhost:8081/producer/endSim",{
+                method:"POST",
+                headers : {
+                    'Content-type':'application/json',
+                },
+                }).then(responce=>{
+                return responce.text();
+                }).catch(error => {
+                console.error("Error:", error);
+                this.isError = true;
+            });
+            clearInterval(this.interval)
+            this.interval = null
+
+            this.circles = []
+            this.allshapes.forEach((arrayItem) => {
+                if(arrayItem.name === "circle"){
+                    arrayItem.fill = this.defaultCirclefill
+                    this.circles.push(arrayItem)
+                }
+                    
+            });
+        },
+        async play(){
+            document.getElementsByClassName("shapes").disabled = true
+            document.getElementById("simulate").disabled = true
+            document.getElementById("resimulate").disabled = true
+            document.getElementById("clear").disabled = true
+
+
+            this.products = this.numberOfProducts
+            this.handleOtherShapes(-1)
+            console.log(JSON.stringify(this.allshapes))
+            let controller = new AbortController();
+            setTimeout(() => controller.abort(), 1000);
+            const responcee = await fetch("http://localhost:8081/producer/simulation",{
+                
+                signal: controller.signal,
+                method:"POST",
+                headers : {
+                    'Content-type':'application/json',
+                },
+                body : JSON.stringify(this.allshapes)
+                }).then(responce=>{
+                return responce.text();
+                }).catch(error => {
+                console.error("Error:", error);
+                this.isError = true;
+            });
+            this.isUpdating = true
+            this.interval = setInterval(this.updateSimulation, 500);
+        },
+        async replay(){
+            this.end()
+
+            document.getElementsByClassName("shapes").disabled = true
+            document.getElementById("simulate").disabled = true
+            document.getElementById("resimulate").disabled = true
+            document.getElementById("clear").disabled = true
+
+            this.numberOfProducts = 0
+            for(let i = 0; i < this.products; i++){
+                this.increment()
+            }
+            this.handleOtherShapes(-1)
+            let controller = new AbortController();
+            setTimeout(() => controller.abort(), 1000);
+            const responcee = await fetch("http://localhost:8081/producer/simulation",{
+                
+                signal: controller.signal,
+                method:"POST",
+                headers : {
+                    'Content-type':'application/json',
+                },
+                body : JSON.stringify(this.allshapes)
+                }).then(responce=>{
+                return responce.text();
+                }).catch(error => {
+                console.error("Error:", error);
+                this.isError = true;
+            });
+            this.isUpdating = true
+            this.interval = setInterval(this.updateSimulation, 500);
+        },
+        async updateSimulation () {
+            
+            var temp = []
+            const responcee = await fetch("http://localhost:8081/producer/updateState",{
+                method:"POST",
+                headers : {
+                    'Content-type':'application/json',
+                },
+                }).then(responce=>{
+                return responce.text();
+                }).then(data =>{
+                if(JSON.parse(data).length == this.allshapes.length){temp = JSON.parse(data);}
+                }).catch(error => {
+                console.error("Error:", error);
+                this.isError = true;
+            });
+            console.log(this.allshapes)
+
+
+            for(let i = 0 ; i < this.allshapes.length; i++){
+                if (temp[i].name == "circle"){
+                    for(let j =0; j < this.circles.length; j++){
+                        if(this.circles[j].id == temp[i].id){
+                            if(temp[i].fill === null || temp[i].fill == "#ddd"){
+                                this.circles[j].fill = this.defaultCirclefill
+                            }else {
+                                this.circles[j].fill = temp[i].fill
+                            }
+                        }
+                    }
+                }
+            }
+        },
         handleDragEnd(e){
             var shape = this.allshapes.find((r) => r.id === e.target.id())
             shape.x = e.target.x()
@@ -124,23 +266,55 @@ export default {
             this.shapeVariable = shapeVariable
         },
         enterChangeColorCircle(shapeConfig) {
-            shapeConfig.fill = "#0a7b0a"
+            if(this.isUpdating == false){
+                shapeConfig.fill = "#0a7b0a"
+            }
         },
         leaveChangeColorCircle(shapeConfig) {
-            shapeConfig.fill = "#05bc05"
+            if(this.isUpdating == false){
+                shapeConfig.fill = "#05bc05"
+            }
         },
         enterChangeColorRectangle(shapeConfig) {
-            shapeConfig.fill = "#d3d306"
+            if(this.isUpdating == false){
+                shapeConfig.fill = "#d3d306"
+            }
         },
         leaveChangeColorRectangle(shapeConfig) {
-            shapeConfig.fill = "#ffff00"
+            if(this.isUpdating == false){
+                shapeConfig.fill = "#ffff00"
+            }
         },
-        increment() {
+        async increment() {
             this.numberOfProducts++;
+            const responcee = await fetch("http://localhost:8081/producer/addProduct",{
+                method:"POST",
+                headers : {
+                    'Content-type':'application/json',
+                },
+                body : this.numberOfProducts
+                }).then(responce=>{
+                return responce.text();
+                }).catch(error => {
+                console.error("Error:", error);
+                this.isError = true;
+            });
         },
-        decrement() {
+        async decrement() {
             if (this.numberOfProducts > 0) {
                 this.numberOfProducts--;
+                const responcee = await fetch("http://localhost:8081/producer/deleteProduct",{
+                    method:"POST",
+                    headers : {
+                        'Content-type':'application/json',
+                    },
+                    body : this.numberOfProducts
+                    }).then(responce=>{
+                    return responce.text();
+                    }).catch(error => {
+                    console.error("Error:", error);
+                    this.isError = true;
+                });
             }
         },
         fitStageIntoParentContainer() {
@@ -159,19 +333,6 @@ export default {
             this.circles = []
             this.lines = []
             this.id = 0
-            fetch("http://localhost:8081/paint/clearAll", {
-                method: "POST",
-                headers: {
-                    'Content-type': 'application/json',
-                },
-            }).then(responce => {
-                return responce.text();
-            }).then(data => {
-                console.log(data);
-            }).catch(error => {
-                console.error("Error:", error);
-                this.isError = true;
-            });
         },
         handleLineMove(event){
           var item1ForWidth = 0
@@ -192,7 +353,6 @@ export default {
                 name: 'line',
                 id: String(this.id)
             });
-            this.id = String((Number(this.id) + 1));
             this.lines.pop()
             this.lines.push(line)
           }
@@ -237,7 +397,6 @@ export default {
                   name: 'line',
                   id: String(this.id)
               });
-              this.id = String((Number(this.id) + 1));
               this.lines.push(line)
 
             }else {
@@ -262,7 +421,9 @@ export default {
                             lineJoin: 'round',
                             draggable: false,
                             name: 'line',
-                            id: String(this.id)
+                            id: String(this.id),
+                            from: String(this.sourceConfig.id),
+                            to: String(this.shapeConfigurations.id)
                         });
                         this.shapeConfigurations.draggable = false
                         this.sourceConfig.draggable = false
@@ -292,11 +453,14 @@ export default {
                             lineJoin: 'round',
                             draggable: false,
                             name: 'line',
-                            id: String(this.id)
+                            id: String(this.id),
+                            from: String(this.sourceConfig.id),
+                            to: String(this.shapeConfigurations.id)
                         });
                         this.shapeConfigurations.draggable = false
                         this.sourceConfig.draggable = false
                         this.id = String((Number(this.id) + 1));
+
                         this.lines.pop()
                         this.lines.push(line)
                         this.allshapes.push(line)
@@ -362,21 +526,6 @@ export default {
                     this.id = String((Number(this.id) + 1))
                     this.rectangles.push(rect)
                     this.allshapes.push(rect)
-
-                    fetch("http://localhost:8081/paint/create", {
-                        method: "POST",
-                        headers: {
-                            'Content-type': 'application/json',
-                        },
-                        body: JSON.stringify(rect)
-                    }).then(responce => {
-                        return responce.text();
-                    }).then(data => {
-                        console.log(data);
-                    }).catch(error => {
-                        console.error("Error:", error);
-                        this.isError = true;
-                    });
                     break;
                 case 2:
                     var circle = ({
@@ -393,21 +542,6 @@ export default {
                     this.id = String((Number(this.id) + 1));
                     this.circles.push(circle)
                     this.allshapes.push(circle)
-
-                    fetch("http://localhost:8081/paint/create", {
-                        method: "POST",
-                        headers: {
-                            'Content-type': 'application/json',
-                        },
-                        body: JSON.stringify(circle)
-                    }).then(responce => {
-                        return responce.text();
-                    }).then(data => {
-                        console.log(data);
-                    }).catch(error => {
-                        console.error("Error:", error);
-                        this.isError = true;
-                    });
                     break;
             }
             if(this.shapeVariable != 3){
@@ -511,8 +645,8 @@ section {
 
 .shapes:hover,
 .options:hover {
-    background-color: rgb(0, 0, 0);
-    color: #e9eef0;
+    background-color: rgb(0, 0, 0) !important;
+    color: #e9eef0 !important;
 }
 
 .sidenavshape {
@@ -586,6 +720,7 @@ header {
     cursor: pointer;
     background: #e9eef0;
     font-family: 'Signika Negative', sans-serif;
+    border: none;
 }
 
 .productsbutton:hover {
